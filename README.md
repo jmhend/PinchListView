@@ -49,4 +49,25 @@ Finally, in your ```BaseAdapter```'s ```getView(int, View, ViewGroup)``` method,
 the ```View``` you intend to return from ```getView()```. This is required, and also means you'll need to pass a reference to
 your ```PinchListView``` into your BaseAdapter.
 
+```java
+public class SimplePinchAdapter extends ArrayAdapter<Object> implements PinchAdapter {
+
+    private PinchListView mListView;
+    
+    public SimplePinchAdapter(PinchListView plv, Context context, List<Object> objects) {
+        super(context, 0, objects);
+        mListView = plv;
+    }
+    
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+    	
+    	...
+    	
+    	mListView.adjustCellHeight(convertView, position);
+    	return convertView;
+    }
+}
+```
+
 The file ```MainActivity.java``` contains an example implementation of ```PinchAdapter```, as well as general usage of ```PinchListView```.
