@@ -1,9 +1,11 @@
 package me.jmhend.PinchListView;
 
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -53,11 +55,13 @@ public class PinchListView extends ListView  {
 	private PinchHandler mPinchHandler;
 	private ScaleGestureDetector mScaleDetector;
 	private PinchAdapter mPinchAdapter;
-	private OnItemPinchedListener mOnItemPinchedListener;
+	private List<OnItemPinchListener> mPinchListeners = new ArrayList<OnItemPinchListener>();;
 	
 	private int mExpandedHeight;
 	private int mCollapsedHeight;
 	private int mPinchHeight;
+	
+	private boolean mPinchable = true;
 
 ////=========================================================================================
 //// Constructor.
@@ -104,6 +108,7 @@ public class PinchListView extends ListView  {
 		mPinchHandler = new PinchHandler();
 		mScaleDetector = new ScaleGestureDetector(getContext(), mPinchHandler);
 	}
+	
 ////=========================================================================================
 //// ListAdapter
 ////=========================================================================================
@@ -147,12 +152,26 @@ public class PinchListView extends ListView  {
 	 * @param position
 	 */
 	public void adjustCellHeight(View view, int position) {
-		final int height = (mPinchAdapter.isRowPinchable(position)) ? getPinchHeight() : getExpandedHeight(position);
+		final int height = (mPinchable && mPinchAdapter.isRowPinchable(position)) ? getPinchHeight() : getExpandedHeight(position);
 		ViewGroup.LayoutParams params = view.getLayoutParams();
 		if (params.height != height) {
 			params.height = height;
 			view.setLayoutParams(params);
 		}
+	}
+	
+	/**
+	 * @return True if the ListView adjusts to pinch gestures.
+	 */
+	public boolean isPinchable() {
+		return mPinchable;
+	}
+	
+	/**
+	 * @param pinchable True if the ListView adjusts to pinch gestures.
+	 */
+	public void setPinchable(boolean pinchable) {
+		mPinchable = pinchable;
 	}
 	
 	/**
@@ -169,6 +188,7 @@ public class PinchListView extends ListView  {
 	 */
 	public void setExpandedHeightInPx(int expandedHeight) {
 		mExpandedHeight = expandedHeight;
+		mPinchHandler.setMaxHeight(expandedHeight);
 	}
 	
 	/**
@@ -228,7 +248,9 @@ public class PinchListView extends ListView  {
 	 */
 	@Override
 	public boolean onTouchEvent(MotionEvent ev) {
-		mScaleDetector.onTouchEvent(ev);
+		if (mPinchable) {
+			mScaleDetector.onTouchEvent(ev);
+		}
 		return super.onTouchEvent(ev);
 	}
 	
@@ -241,7 +263,7 @@ public class PinchListView extends ListView  {
 	 * 
 	 * @author jmhend
 	 */
-	public static interface OnItemPinchedListener {
+	public static interface OnItemPinchListener {
 		
 		/**
 		 * Called when a pinch action is taken on the PinchListView.
@@ -251,14 +273,14 @@ public class PinchListView extends ListView  {
 		 * @param newHeight
 		 * @param heightPercent
 		 */
-		public void onItemPinched(PinchListView listView, View view, int newHeight, float heightPercent);
+		public void onItemPinch(PinchListView listView, View view, int newHeight, float heightPercent);
 	}
 	
 	/**
-	 * @param listener The OnItemPinchedListener to callback to.
+	 * @param listener The OnItemPinchListener to callback to.
 	 */
-	public void setOnItemPinchedListener(OnItemPinchedListener listener) {
-		mOnItemPinchedListener = listener;
+	public void addOnItemPinchListener(OnItemPinchListener listener) {
+		mPinchListeners.add(listener);
 	}
 	
 	
@@ -317,6 +339,13 @@ public class PinchListView extends ListView  {
 			maxHeight = getExpandedHeight(0);
 			minHeight = getCollapsedHeight();
 			maxPinchDistance = maxHeight - minHeight;
+		}
+		
+		/**
+		 * @param maxHeight Maximum expansion height.
+		 */
+		private void setMaxHeight(int maxHeight) {
+			this.maxHeight = maxHeight;
 		}
 		
 	////====================================================================================
@@ -397,13 +426,16 @@ public class PinchListView extends ListView  {
 			for (int i = 0; i < getChildCount(); i++) {
 				View child = getChildAt(i);
 				int position = i + getFirstVisiblePosition();
+				if (position >= getCount() - getFooterViewsCount()) {
+					continue;
+				}
 				if (mPinchAdapter.isRowPinchable(position)) {
 					child.getLayoutParams().height = height;
 					child.requestLayout();
 					
-					if (mOnItemPinchedListener != null) {
-						final float newHeightPercent = calculateHeightPercentage(height, mExpandedHeight, mCollapsedHeight);
-						mOnItemPinchedListener.onItemPinched(PinchListView.this, child, height, newHeightPercent);
+					final float newHeightPercent = calculateHeightPercentage(height, mExpandedHeight, mCollapsedHeight);
+					for (OnItemPinchListener l : mPinchListeners) {
+						l.onItemPinch(PinchListView.this, child, height, newHeightPercent);
 					}
 				}
 			}
@@ -467,7 +499,7 @@ public class PinchListView extends ListView  {
 		private final int startHeight;
 		private final int endHeight;
 		private final boolean willChangeHeight;
-		private OnItemPinchedListener mOnItemPinchedListener;
+		private List<OnItemPinchListener> mListeners;
 		
 		/**
 		 * Constructor.
@@ -478,7 +510,7 @@ public class PinchListView extends ListView  {
 			this.startHeight = startHeight;
 			this.endHeight = endHeight;
 			this.willChangeHeight = startHeight != endHeight;
-			this.mOnItemPinchedListener = parent.mOnItemPinchedListener;
+			this.mListeners = parent.mPinchListeners;
 		}
 		
 		/**
@@ -501,9 +533,9 @@ public class PinchListView extends ListView  {
 				view.getLayoutParams().height = height;
 				view.requestLayout();
 				
-				if (mOnItemPinchedListener != null) {
-					final float newHeightPercent = PinchListView.calculateHeightPercentage(height, parent.mExpandedHeight, parent.mCollapsedHeight);
-					mOnItemPinchedListener.onItemPinched(parent, view, height, newHeightPercent);
+				final float newHeightPercent = PinchListView.calculateHeightPercentage(height, parent.mExpandedHeight, parent.mCollapsedHeight);
+				for (OnItemPinchListener l : mListeners) {
+					l.onItemPinch(parent, view, height, newHeightPercent);
 				}
 			}
 		}

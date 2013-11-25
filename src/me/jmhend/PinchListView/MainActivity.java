@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import me.jmhend.PinchListView.R;
-import me.jmhend.PinchListView.PinchListView.OnItemPinchedListener;
+import me.jmhend.PinchListView.PinchListView.OnItemPinchListener;
 import me.jmhend.PinchListView.PinchListView.PinchState;
 import android.app.Activity;
 import android.content.Context;
@@ -59,14 +59,14 @@ public class MainActivity extends Activity {
 		mListAdapter = new SimplePinchAdapter(mListView, this, pinchItems);
 		mListView.setAdapter(mListAdapter);
 		
-		// Add an OnItemPinchedListener 
-		mListView.setOnItemPinchedListener(new OnItemPinchedListener() {
+		// Add an OnItemPinchListener 
+		mListView.addOnItemPinchListener(new OnItemPinchListener() {
 			/*
 			 * (non-Javadoc)
 			 * @see me.jmhend.ui.pinchlist.PinchListView.OnItemPinchedListener#onViewPinched(me.jmhend.ui.pinchlist.PinchListView, android.view.View, int, float)
 			 */
 			@Override
-			public void onItemPinched(PinchListView listView, View view, int newHeight, float heightPercent) { 
+			public void onItemPinch(PinchListView listView, View view, int newHeight, float heightPercent) { 
 				// Adjust the TextView alpha based on how the cells have been pinched.
 				((TextView) view.findViewById(R.id.text)).setAlpha(heightPercent);
 			}
