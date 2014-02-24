@@ -6,11 +6,13 @@ import java.util.List;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
+import android.view.animation.Animation.AnimationListener;
 import android.view.animation.Transformation;
 import android.widget.ListAdapter;
 import android.widget.ListView;
@@ -55,7 +57,8 @@ public class PinchListView extends ListView  {
 	private PinchHandler mPinchHandler;
 	private ScaleGestureDetector mScaleDetector;
 	private PinchAdapter mPinchAdapter;
-	private List<OnItemPinchListener> mPinchListeners = new ArrayList<OnItemPinchListener>();;
+	private List<OnItemPinchListener> mPinchListeners = new ArrayList<OnItemPinchListener>();
+	private OnPinchCompleteListener mPinchCompleteListener;
 	
 	private int mExpandedHeight;
 	private int mCollapsedHeight;
@@ -238,6 +241,20 @@ public class PinchListView extends ListView  {
 		return ((float) height - min) / ((float) (max - min));
 	}
 	
+	/**
+	 * Animates the PinchListView fully open.
+	 */
+	public void animateExpanded() {
+		mPinchHandler.animateExpanded();
+	}
+	
+	/**
+	 * Aniamtes the PinchListView fully closed.
+	 */
+	public void animateCollapsed() {
+		mPinchHandler.animateCollapsed();
+	}
+	
 ////=========================================================================================
 //// Touch Events
 ////=========================================================================================
@@ -281,6 +298,28 @@ public class PinchListView extends ListView  {
 	 */
 	public void addOnItemPinchListener(OnItemPinchListener listener) {
 		mPinchListeners.add(listener);
+	}
+	
+	/**
+	 * Listens for a pinch action or animation to complete.
+	 * @author jmhend
+	 *
+	 */
+	public static interface OnPinchCompleteListener {
+		
+		/**
+		 * Called when the pinch action or animation is completed.
+		 * @param listView
+		 * @param endingState
+		 */
+		public void onPinchComplete(PinchListView listView, PinchState endingState);
+	}
+	
+	/**
+	 * @param listener
+	 */
+	public void setOnPinchCompleteListener(OnPinchCompleteListener listener) {
+		mPinchCompleteListener = listener;
 	}
 	
 	
@@ -414,6 +453,30 @@ public class PinchListView extends ListView  {
 			animateChildrenHeight(height, duration);
 		}
 		
+		/**
+		 * Animates each pinchable cell fully open.
+		 */
+		public void animateExpanded() {
+			animateHeightTo(maxHeight);
+		}
+		
+		/**
+		 * ANimates each pinchable cell fully closed.
+		 */
+		public void animateCollapsed() {
+			animateHeightTo(minHeight);
+		}
+		
+		/**
+		 * Animates each pinchable cell to 'height'.
+		 * @param height
+		 */
+		private void animateHeightTo(int height) {
+			long duration = calcAnimationDuration(getPinchHeight(), height);
+			setPinchHeight(height);
+			animateChildrenHeight(height, duration);
+		}
+		
 	////====================================================================================
 	//// View
 	////====================================================================================
@@ -445,11 +508,36 @@ public class PinchListView extends ListView  {
 		 * Animates the height of all visible pinchable children to 'height'.
 		 */
 		private void animateChildrenHeight(int height, long duration) {
+			boolean isFirst = true;
+			
 			for (int i = 0; i < getChildCount(); i++) {
 				View child = getChildAt(i);
 				int position = i + getFirstVisiblePosition();
 				if (mPinchAdapter.isRowPinchable(position)) {
-					PinchAnimation.withView(child).toHeight(height).go(duration);
+					
+					// Only create 1 listener.
+					AnimationListener l = null;
+					if (isFirst) {
+						isFirst = false;
+						l = new AnimationListener() {
+							/*
+							 * (non-Javadoc)
+							 * @see android.view.animation.Animation.AnimationListener#onAnimationEnd(android.view.animation.Animation)
+							 */
+							@Override
+							public void onAnimationEnd(Animation animation) {
+								if (mPinchCompleteListener != null) {
+									mPinchCompleteListener.onPinchComplete(PinchListView.this, getPinchState());
+								}
+							}
+							@Override
+							public void onAnimationStart(Animation animation) { }
+							@Override
+							public void onAnimationRepeat(Animation animation) { }
+							
+						};
+					}
+					PinchAnimation.withView(child).toHeight(height).withListener(l).go(duration);
 				}
 			}
 		}
@@ -499,7 +587,7 @@ public class PinchListView extends ListView  {
 		private final int startHeight;
 		private final int endHeight;
 		private final boolean willChangeHeight;
-		private List<OnItemPinchListener> mListeners;
+		private List<OnItemPinchListener> mItemPinchListeners;
 		
 		/**
 		 * Constructor.
@@ -510,7 +598,7 @@ public class PinchListView extends ListView  {
 			this.startHeight = startHeight;
 			this.endHeight = endHeight;
 			this.willChangeHeight = startHeight != endHeight;
-			this.mListeners = parent.mPinchListeners;
+			this.mItemPinchListeners = parent.mPinchListeners;
 		}
 		
 		/**
@@ -534,7 +622,7 @@ public class PinchListView extends ListView  {
 				view.requestLayout();
 				
 				final float newHeightPercent = PinchListView.calculateHeightPercentage(height, parent.mExpandedHeight, parent.mCollapsedHeight);
-				for (OnItemPinchListener l : mListeners) {
+				for (OnItemPinchListener l : mItemPinchListeners) {
 					l.onItemPinch(parent, view, height, newHeightPercent);
 				}
 			}
