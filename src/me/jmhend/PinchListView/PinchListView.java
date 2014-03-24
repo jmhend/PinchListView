@@ -4,9 +4,10 @@ package me.jmhend.PinchListView;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.animation.Animator;
+import android.animation.Animator.AnimatorListener;
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -235,7 +236,7 @@ public class PinchListView extends ListView  {
 	 * Sets the height of all pinchable children rows.
 	 * @param height
 	 */
-	private void setPinchableChildrenHeight(int height) {
+	public void setPinchableChildrenHeight(int height) {
 		mPinchHandler.setChildrenHeight(height);
 	}
 	
@@ -261,6 +262,52 @@ public class PinchListView extends ListView  {
 	 */
 	public void animateCollapsed() {
 		mPinchHandler.animateCollapsed();
+	}
+	
+	public void pulse() {
+		PinchAnimation.withPinchListView(PinchListView.this)
+		.fromHeight(mCollapsedHeight)
+		.toHeight(mCollapsedHeight * 3)
+		.withListener(new SimpleAnimationListener() {
+			/*
+			 * (non-Javadoc)
+			 * @see android.view.animation.Animation.AnimationListener#onAnimationEnd(android.view.animation.Animation)
+			 */
+			@Override
+			public void onAnimationEnd(Animation animation) {
+				PinchAnimation.withPinchListView(PinchListView.this)
+				.fromHeight(mCollapsedHeight * 3)
+				.toHeight(mCollapsedHeight)
+				.withListener(new SimpleAnimationListener() {
+					/*
+					 * (non-Javadoc)
+					 * @see android.view.animation.Animation.AnimationListener#onAnimationEnd(android.view.animation.Animation)
+					 */
+					@Override
+					public void onAnimationEnd(Animation animation) {
+						PinchAnimation.withPinchListView(PinchListView.this)
+						.fromHeight(mCollapsedHeight)
+						.toHeight(mCollapsedHeight * 3)
+						.withListener(new SimpleAnimationListener() {
+							/*
+							 * (non-Javadoc)
+							 * @see android.view.animation.Animation.AnimationListener#onAnimationEnd(android.view.animation.Animation)
+							 */
+							@Override
+							public void onAnimationEnd(Animation animation) {
+								PinchAnimation.withPinchListView(PinchListView.this)
+								.fromHeight(mCollapsedHeight * 3)
+								.toHeight(mCollapsedHeight)
+								.go(80);
+							}
+						})
+						.go(80);
+					}
+				})
+				.go(80);
+			}
+		})
+		.go(80);
 	}
 	
 ////=========================================================================================
@@ -678,6 +725,29 @@ public class PinchListView extends ListView  {
 				plv.startAnimation(a);
 			}
 		}
+		
+	}
+	
+	private static class SimpleAnimationListener implements AnimationListener {
+
+		@Override
+		public void onAnimationStart(Animation animation) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onAnimationEnd(Animation animation) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onAnimationRepeat(Animation animation) {
+			// TODO Auto-generated method stub
+			
+		}
+
 		
 	}
 }
