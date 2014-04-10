@@ -456,8 +456,6 @@ public class PinchListView extends ListView  {
 			final int currentHeight = getPinchHeight();
 			final float scalingFactor = 1 + ((detector.getScaleFactor() - 1) * 8);
 			
-//			Log.i(TAG, "onScale: " + getPinchState() + " (" + scalingFactor + ")");
-			
 			// Check the pinch direction.
 			final boolean currentlyExpanding = scalingFactor > 1.0f;
 			if (currentlyExpanding != isExpanding) {
@@ -496,7 +494,6 @@ public class PinchListView extends ListView  {
 		 */
 		@Override
 		public boolean onScaleBegin(IScaleGestureDetector detector) {
-			Log.e(TAG, "onScaleBegin");
 			return true;
 		}
 	
@@ -506,7 +503,6 @@ public class PinchListView extends ListView  {
 		 */
 		@Override
 		public void onScaleEnd(IScaleGestureDetector detector) {
-			Log.e(TAG, "onScaleEnd");
 			int fromHeight = getPinchHeight();
 			int toHeight = calcTargetHeight();
 			long duration = calcAnimationDuration(getPinchHeight(), toHeight);
