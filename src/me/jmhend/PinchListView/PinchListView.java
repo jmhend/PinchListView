@@ -4,10 +4,11 @@ package me.jmhend.PinchListView;
 import java.util.ArrayList;
 import java.util.List;
 
-import android.animation.Animator;
-import android.animation.Animator.AnimatorListener;
+import me.jmhend.PinchListView.IScaleGestureDetector.IOnScaleGestureListener;
 import android.content.Context;
+import android.os.Build;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -56,7 +57,7 @@ public class PinchListView extends ListView  {
 ////=========================================================================================
 	
 	private PinchHandler mPinchHandler;
-	private ScaleGestureDetector mScaleDetector;
+	private IScaleGestureDetector mScaleDetector;
 	private PinchAdapter mPinchAdapter;
 	private List<OnItemPinchListener> mPinchListeners = new ArrayList<OnItemPinchListener>();
 	private OnPinchCompleteListener mPinchCompleteListener;
@@ -110,7 +111,7 @@ public class PinchListView extends ListView  {
 		mCollapsedHeight = PinchUtils.dpToPx(DEFAULT_HEIGHT_COLLAPSED_DP, getContext());
 		mPinchHeight = mCollapsedHeight;
 		mPinchHandler = new PinchHandler();
-		mScaleDetector = new ScaleGestureDetector(getContext(), mPinchHandler);
+		mScaleDetector = new IScaleGestureDetector(getContext(), mPinchHandler);
 	}
 	
 ////=========================================================================================
@@ -287,7 +288,7 @@ public class PinchListView extends ListView  {
 					public void onAnimationEnd(Animation animation) {
 						PinchAnimation.withPinchListView(PinchListView.this)
 						.fromHeight(mCollapsedHeight)
-						.toHeight(mCollapsedHeight * 3)
+						.toHeight(mCollapsedHeight * 4)
 						.withListener(new SimpleAnimationListener() {
 							/*
 							 * (non-Javadoc)
@@ -296,15 +297,15 @@ public class PinchListView extends ListView  {
 							@Override
 							public void onAnimationEnd(Animation animation) {
 								PinchAnimation.withPinchListView(PinchListView.this)
-								.fromHeight(mCollapsedHeight * 3)
+								.fromHeight(mCollapsedHeight * 4)
 								.toHeight(mCollapsedHeight)
-								.go(80);
+								.go(100);
 							}
 						})
 						.go(80);
 					}
 				})
-				.go(80);
+				.go(100);
 			}
 		})
 		.go(80);
@@ -319,7 +320,7 @@ public class PinchListView extends ListView  {
 	 * @see android.widget.AbsListView#onTouchEvent(android.view.MotionEvent)
 	 */
 	@Override
-	public boolean onTouchEvent(MotionEvent ev) {
+	public boolean onTouchEvent(final MotionEvent ev) {
 		if (mPinchable) {
 			mScaleDetector.onTouchEvent(ev);
 		}
@@ -390,7 +391,7 @@ public class PinchListView extends ListView  {
 	 * @author jmhend
 	 *
 	 */
-	private class PinchHandler implements ScaleGestureDetector.OnScaleGestureListener {
+	private class PinchHandler implements IOnScaleGestureListener {
 
 		/**
 		 * Duration of a full expand/collapse pinch animation.
@@ -451,9 +452,11 @@ public class PinchListView extends ListView  {
 		 * @see android.view.ScaleGestureDetector.OnScaleGestureListener#onScale(android.view.ScaleGestureDetector)
 		 */
 		@Override
-		public boolean onScale(ScaleGestureDetector detector) {
+		public boolean onScale(IScaleGestureDetector detector) {
 			final int currentHeight = getPinchHeight();
 			final float scalingFactor = 1 + ((detector.getScaleFactor() - 1) * 8);
+			
+//			Log.i(TAG, "onScale: " + getPinchState() + " (" + scalingFactor + ")");
 			
 			// Check the pinch direction.
 			final boolean currentlyExpanding = scalingFactor > 1.0f;
@@ -492,7 +495,8 @@ public class PinchListView extends ListView  {
 		 * @see android.view.ScaleGestureDetector.OnScaleGestureListener#onScaleBegin(android.view.ScaleGestureDetector)
 		 */
 		@Override
-		public boolean onScaleBegin(ScaleGestureDetector detector) {
+		public boolean onScaleBegin(IScaleGestureDetector detector) {
+			Log.e(TAG, "onScaleBegin");
 			return true;
 		}
 	
@@ -501,7 +505,8 @@ public class PinchListView extends ListView  {
 		 * @see android.view.ScaleGestureDetector.OnScaleGestureListener#onScaleEnd(android.view.ScaleGestureDetector)
 		 */
 		@Override
-		public void onScaleEnd(ScaleGestureDetector detector) {
+		public void onScaleEnd(IScaleGestureDetector detector) {
+			Log.e(TAG, "onScaleEnd");
 			int fromHeight = getPinchHeight();
 			int toHeight = calcTargetHeight();
 			long duration = calcAnimationDuration(getPinchHeight(), toHeight);
