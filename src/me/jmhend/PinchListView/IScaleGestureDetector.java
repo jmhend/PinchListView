@@ -70,6 +70,17 @@ public class IScaleGestureDetector implements OnScaleGestureListener, OnSupportS
 	}
 	
 	/**
+	 * @return The Y coordinate of the pinch's focal point.
+	 */
+	public float getFocusY() {
+		if (useSupport()) {
+			return mSupportScaleGestureDetector.getFocusY();
+		} else {
+			return mScaleGestureDetector.getFocusY();
+		}
+	}
+	
+	/**
 	 * @return True if a scale gesture is in Progress.
 	 */
 	public boolean isInProgress() {

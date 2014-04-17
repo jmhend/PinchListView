@@ -4,20 +4,21 @@ package me.jmhend.PinchListView;
 import java.util.ArrayList;
 import java.util.List;
 
+import junit.framework.Assert;
 import me.jmhend.PinchListView.IScaleGestureDetector.IOnScaleGestureListener;
 import android.content.Context;
-import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
-import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.Animation.AnimationListener;
 import android.view.animation.Transformation;
+import android.widget.FrameLayout;
 import android.widget.ListAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
 
 /**
  * ListView that supports expanding and collapsing certain cells via pinching gestures.
@@ -35,6 +36,8 @@ public class PinchListView extends ListView  {
 	
 	private static final int DEFAULT_HEIGHT_EXPANDED_DP = 80;
 	private static final int DEFAULT_HEIGHT_COLLAPSED_DP = 2;
+	
+	private static final int DEFAULT_GROUPING_VICINITY = DEFAULT_HEIGHT_EXPANDED_DP / 3;
 	
 ////=========================================================================================
 //// PinchState
@@ -65,7 +68,9 @@ public class PinchListView extends ListView  {
 	private int mExpandedHeight;
 	private int mCollapsedHeight;
 	private int mPinchHeight;
+	private int mGroupingVicinityThreshold;
 	
+	private boolean mLockListView = false;
 	private boolean mPinchable = true;
 
 ////=========================================================================================
@@ -109,6 +114,7 @@ public class PinchListView extends ListView  {
 	private void init() {
 		mExpandedHeight = PinchUtils.dpToPx(DEFAULT_HEIGHT_EXPANDED_DP, getContext());
 		mCollapsedHeight = PinchUtils.dpToPx(DEFAULT_HEIGHT_COLLAPSED_DP, getContext());
+		mGroupingVicinityThreshold = PinchUtils.dpToPx(DEFAULT_GROUPING_VICINITY, getContext());
 		mPinchHeight = mCollapsedHeight;
 		mPinchHandler = new PinchHandler();
 		mScaleDetector = new IScaleGestureDetector(getContext(), mPinchHandler);
@@ -324,13 +330,36 @@ public class PinchListView extends ListView  {
 		if (mPinchable) {
 			mScaleDetector.onTouchEvent(ev);
 		}
-//		if (mScaleDetector.isInProgress()) {
-//			return true;
-//		}
-//		
-		// TODO: Handle the ListView jump after releasing the pinch.
+		
+		// Lock ListView after a scale occurs until the user stops touching the screen.
+		if (!mLockListView && mScaleDetector.isInProgress()) {
+			mLockListView = true;
+		}
+		
+		// Unset 
+		switch (ev.getActionMasked()) {
+		case MotionEvent.ACTION_UP:
+		case MotionEvent.ACTION_CANCEL:
+			mLockListView = false;
+			break;
+		}
+		
+		if (interceptTouchEvent(ev)) {
+			return true;
+		}
 		
 		return super.onTouchEvent(ev);
+	}
+	
+	
+	/**
+	 * @return True if the TouchEvent should not be passed along to the super class.
+	 */
+	private boolean interceptTouchEvent(final MotionEvent ev) {
+		if (mLockListView) {
+			return true;
+		}
+		return false;
 	}
 	
 ////=========================================================================================
@@ -500,6 +529,8 @@ public class PinchListView extends ListView  {
 		 */
 		@Override
 		public boolean onScaleBegin(IScaleGestureDetector detector) {
+			int y = (int) detector.getFocusY();
+			setAnchorView(findAnchorView(y));
 			return true;
 		}
 	
@@ -535,6 +566,8 @@ public class PinchListView extends ListView  {
 		 * @param toHeight
 		 */
 		private void animateHeightTo(int toHeight) {
+//			setAnchorView(findAnchorView(PinchListView.this.getHeight() / 2));
+			
 			long duration = calcAnimationDuration(getPinchHeight(), toHeight);
 			int fromHeight = getPinchHeight();
 			setPinchHeight(toHeight);
@@ -550,24 +583,140 @@ public class PinchListView extends ListView  {
 		 * @param height
 		 */
 		public void setChildrenHeight(int height) {
+			boolean haveAnchor = mAnchorView != null;
+			boolean reachedAnchor = false;
+			int anchorIndex = - 1;
+			
+			int heightDiff = 0;
 			for (int i = 0; i < getChildCount(); i++) {
 				View child = getChildAt(i);
 				int position = i + getFirstVisiblePosition();
 				if (position >= getCount() - getFooterViewsCount()) {
 					continue;
 				}
+				if (child == mAnchorView) {
+					anchorIndex = position;
+					reachedAnchor = true;
+				}
 				if (mPinchAdapter.isRowPinchable(position)) {
-					child.getLayoutParams().height = height;
-					child.requestLayout();
-					
-					if (!mPinchListeners.isEmpty()) {
-						final float newHeightPercent = calculateHeightPercentage(height, mExpandedHeight, mCollapsedHeight);
-						for (OnItemPinchListener l : mPinchListeners) {
-							l.onItemPinch(PinchListView.this, child, height, newHeightPercent);
+					int oldHeight = child.getLayoutParams().height;
+					if (oldHeight != height) {
+						
+						if (haveAnchor) {
+							if (!reachedAnchor) {
+								if (child != mAnchorView) {
+									heightDiff += (height - oldHeight);
+								}
+							}
+						}
+						
+						child.getLayoutParams().height = height;
+						child.requestLayout();
+						
+						if (!mPinchListeners.isEmpty()) {
+							final float newHeightPercent = calculateHeightPercentage(height, mExpandedHeight, mCollapsedHeight);
+							for (OnItemPinchListener l : mPinchListeners) {
+								l.onItemPinch(PinchListView.this, child, height, newHeightPercent);
+							}
 						}
 					}
 				}
 			}
+			
+			
+			if (haveAnchor) {
+				final int offset = heightDiff;
+				final ListView list = PinchListView.this;
+				list.smoothScrollBy(offset, 0);
+			}
+		}
+		
+		private View mAnchorView = null;
+		
+		private void setAnchorView(View view) {
+			mAnchorView = view;
+		}
+		
+		private View findAnchorView(int focusY) {
+			Log.e(TAG, "Finding anchor at " + focusY);
+			View groupedView = findGroupingCenterInVicinity(focusY);
+			if (groupedView != null) {
+				return groupedView;
+			}
+			int prevChildTop = 0;
+			for (int i = 0; i < getChildCount(); i++) {
+				View child = getChildAt(i);
+				
+				int top = child.getTop();
+				
+				if (top > focusY && prevChildTop < focusY) {
+					int prevIndex = i - 1;
+					if (prevIndex < 0) {
+						prevIndex = 0;
+					}
+					Log.e(TAG, "Found anchor at " + prevIndex);
+					View view = getChildAt(prevIndex);
+					if (view instanceof FrameLayout) {
+						View tv = ((ViewGroup) ((ViewGroup) ((ViewGroup) view).getChildAt(1)).getChildAt(3)).getChildAt(1);
+						Log.e(TAG, ((TextView) tv).getText().toString());
+					}
+					return view;
+				}
+				
+				prevChildTop = top;
+			}
+			return null;
+		}
+		
+		/**
+		 * @param focusY
+		 * @return
+		 */
+		private View findGroupingCenterInVicinity(int focusY) {
+			final int searchStart = focusY - mGroupingVicinityThreshold;
+			final int searchEnd = focusY + mGroupingVicinityThreshold;
+			Log.e(TAG, "range [" + searchStart + ", " + searchEnd +"]");
+			
+			int groupStartPosition = -1;
+			int groupCount = 0;
+			final int childCount = getChildCount();
+			for (int i = 0; i < childCount; i++) {
+				View child = getChildAt(i);
+				
+				final int top = child.getTop();
+				if (top < searchStart) {
+					continue;
+				}
+				if (top > searchEnd) {
+					break;
+				}
+				
+				final int height = child.getHeight();
+				
+				// Row is collapsed.
+				if (height == mCollapsedHeight) {
+					if (groupCount == 0) {
+						groupStartPosition = i;
+					}
+					groupCount++;
+					
+				} else {
+					// We're iterating over a collapsed grouping, but passed the end of it.
+					if (groupCount > 0) {
+						break;
+					}
+				}
+			}
+			
+			if (groupCount > 0) {
+				Assert.assertTrue(groupStartPosition != -1);
+				int groupOffset = groupCount / 2;
+				int viewPosition = groupStartPosition + groupOffset;
+				Log.e(TAG, "Found grouped View at " + viewPosition + " (offset " + groupOffset + " of " + groupCount + " group size.)");
+				return (getChildAt(viewPosition));
+			}
+			
+			return null;
 		}
 		
 		/**
@@ -584,6 +733,7 @@ public class PinchListView extends ListView  {
 					if (mPinchCompleteListener != null) {
 						mPinchCompleteListener.onPinchComplete(PinchListView.this, getPinchState());
 					}
+					setAnchorView(null);
 				}
 				/*
 				 * (non-Javadoc)
