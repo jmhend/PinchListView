@@ -69,6 +69,17 @@ public class IScaleGestureDetector implements OnScaleGestureListener, OnSupportS
 		}
 	}
 	
+	/**
+	 * @return True if a scale gesture is in Progress.
+	 */
+	public boolean isInProgress() {
+		if (useSupport()) {
+			return mSupportScaleGestureDetector.isInProgress();
+		} else {
+			return mScaleGestureDetector.isInProgress();
+		}
+	}
+	
 	
 ////=========================================================================================
 //// Versioning

@@ -324,6 +324,12 @@ public class PinchListView extends ListView  {
 		if (mPinchable) {
 			mScaleDetector.onTouchEvent(ev);
 		}
+//		if (mScaleDetector.isInProgress()) {
+//			return true;
+//		}
+//		
+		// TODO: Handle the ListView jump after releasing the pinch.
+		
 		return super.onTouchEvent(ev);
 	}
 	
