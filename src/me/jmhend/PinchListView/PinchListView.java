@@ -7,6 +7,7 @@ import java.util.List;
 import junit.framework.Assert;
 import me.jmhend.PinchListView.IScaleGestureDetector.IOnScaleGestureListener;
 import android.content.Context;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -566,7 +567,7 @@ public class PinchListView extends ListView  {
 		 * @param toHeight
 		 */
 		private void animateHeightTo(int toHeight) {
-//			setAnchorView(findAnchorView(PinchListView.this.getHeight() / 2));
+			setAnchorView(findAnchorView(PinchListView.this.getHeight() / 2));
 			
 			long duration = calcAnimationDuration(getPinchHeight(), toHeight);
 			int fromHeight = getPinchHeight();
@@ -624,11 +625,18 @@ public class PinchListView extends ListView  {
 			}
 			
 			
-			if (haveAnchor) {
+			if (haveAnchor && supportsScrollAdjusting()) {
 				final int offset = heightDiff;
 				final ListView list = PinchListView.this;
 				list.smoothScrollBy(offset, 0);
 			}
+		}
+		
+		/**
+		 * @return True if scroll adjust is supported.
+		 */
+		private boolean supportsScrollAdjusting() {
+			return Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1;
 		}
 		
 		private View mAnchorView = null;
