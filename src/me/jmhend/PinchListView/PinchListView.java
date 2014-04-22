@@ -646,7 +646,6 @@ public class PinchListView extends ListView  {
 		}
 		
 		private View findAnchorView(int focusY) {
-			Log.e(TAG, "Finding anchor at " + focusY);
 			View groupedView = findGroupingCenterInVicinity(focusY);
 			if (groupedView != null) {
 				return groupedView;
@@ -662,12 +661,7 @@ public class PinchListView extends ListView  {
 					if (prevIndex < 0) {
 						prevIndex = 0;
 					}
-					Log.e(TAG, "Found anchor at " + prevIndex);
 					View view = getChildAt(prevIndex);
-					if (view instanceof FrameLayout) {
-						View tv = ((ViewGroup) ((ViewGroup) ((ViewGroup) view).getChildAt(1)).getChildAt(3)).getChildAt(1);
-						Log.e(TAG, ((TextView) tv).getText().toString());
-					}
 					return view;
 				}
 				
@@ -683,7 +677,6 @@ public class PinchListView extends ListView  {
 		private View findGroupingCenterInVicinity(int focusY) {
 			final int searchStart = focusY - mGroupingVicinityThreshold;
 			final int searchEnd = focusY + mGroupingVicinityThreshold;
-			Log.e(TAG, "range [" + searchStart + ", " + searchEnd +"]");
 			
 			int groupStartPosition = -1;
 			int groupCount = 0;
@@ -720,7 +713,6 @@ public class PinchListView extends ListView  {
 				Assert.assertTrue(groupStartPosition != -1);
 				int groupOffset = groupCount / 2;
 				int viewPosition = groupStartPosition + groupOffset;
-				Log.e(TAG, "Found grouped View at " + viewPosition + " (offset " + groupOffset + " of " + groupCount + " group size.)");
 				return (getChildAt(viewPosition));
 			}
 			
