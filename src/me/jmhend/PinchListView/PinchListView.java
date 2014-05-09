@@ -159,6 +159,13 @@ public class PinchListView extends ListView  {
 	}
 	
 	/**
+	 * @return True if the PinchListView is fully collapsed.
+	 */
+	public boolean isCollapsed() {
+		return getPinchState() == PinchState.COLLAPSED;
+	}
+	
+	/**
 	 * Adjusts the height of View 'view' at child index 'position'.
 	 * @param view
 	 * @param position
@@ -361,6 +368,13 @@ public class PinchListView extends ListView  {
 			return true;
 		}
 		return false;
+	}
+	
+	/**
+	 * @return True if scroll adjust is supported.
+	 */
+	public static boolean supportsScrollAdjusting() {
+		return Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1;
 	}
 	
 ////=========================================================================================
@@ -630,13 +644,6 @@ public class PinchListView extends ListView  {
 				final ListView list = PinchListView.this;
 				list.smoothScrollBy(offset, 0);
 			}
-		}
-		
-		/**
-		 * @return True if scroll adjust is supported.
-		 */
-		private boolean supportsScrollAdjusting() {
-			return Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1;
 		}
 		
 		private View mAnchorView = null;
